@@ -9,12 +9,12 @@ const TAG_MAP = {
   "Network Analysis": "utility-network",
   "Remote Sensing": "satellite-2-f",
   "Urban Planning": "urban-model",
-  "Environment": "snow-thunder",
-  "Geoscience": "slice",
-  "Agriculture": "color-coded-map",
-  "Health": "medical",
+  Environment: "snow-thunder",
+  Geoscience: "slice",
+  Agriculture: "color-coded-map",
+  Health: "medical",
   "Natural Resource Management": "tree",
-  "Transportation": "bus",
+  Transportation: "bus",
   "Independent (Preliminary) Research": "lightbulb",
   "open-source": "open-book",
   "coding-centric": "terminal",
@@ -43,7 +43,7 @@ async function loadProjects() {
 
 function assetPath(filename) {
   if (!filename) return "";
-  if (filename.startsWith("http") || filename.startsWith("/")) return filename;
+  if (filename.startsWith("blob:") || filename.startsWith("http") || filename.startsWith("/")) return filename;
   return `${ASSET_DIR}${filename}`;
 }
 
@@ -69,9 +69,21 @@ function createChip(tagLabel, { showLabel = false } = {}) {
 
 // Creating project cards
 const grid = document.getElementById("card-grid");
+const previewGrid = document.getElementById("preview-grid");
 const dialog = document.getElementById("project-dialog");
 const dialogBody = document.getElementById("dialog-body");
 const closeBtn = document.getElementById("dialog-close-btn");
+
+// Project preview upload controls
+const previewJsonInput = document.getElementById("preview-json-input");
+const previewThumbnailInput = document.getElementById("preview-thumbnail-input");
+const previewPopupInput = document.getElementById("preview-popup-input");
+const previewProjectBtn = document.getElementById("preview-project-btn");
+const clearPreviewBtn = document.getElementById("clear-preview-btn");
+const previewStatus = document.getElementById("preview-status");
+let previewObjectUrls = [];
+let loadedProjects = [];
+let activePreviewProject = null;
 
 // Mobile nav sheet
 const mobileMenuBtn = document.getElementById("mobile-menu-btn");
@@ -87,29 +99,29 @@ mobilePanel.addEventListener("calcitePanelClose", () => {
   mobileSheet.removeAttribute("open");
 });
 
-function renderProjects(projects) {
-  grid.innerHTML = "";
+function renderProjects(projects, { targetGrid = grid, shouldShuffle = true, idPrefix = "project" } = {}) {
+  targetGrid.innerHTML = "";
 
-  const shuffled = shuffle(projects);
+  const displayProjects = shouldShuffle ? shuffle(projects) : projects;
 
-  shuffled.forEach((proj, idx) => {
+  displayProjects.forEach((proj, idx) => {
     const card = document.createElement("calcite-card");
-    card.setAttribute("label", proj.title);
+    card.setAttribute("label", proj.title ?? "Untitled project");
 
     const img = document.createElement("img");
     img.setAttribute("slot", "thumbnail");
-    img.setAttribute("alt", proj.title);
+    img.setAttribute("alt", proj.title ?? "Project thumbnail");
     img.setAttribute("src", assetPath(proj.thumbnail_image));
     card.appendChild(img);
 
     const heading = document.createElement("span");
     heading.setAttribute("slot", "heading");
-    heading.textContent = proj.title;
+    heading.textContent = proj.title ?? "Untitled project";
     card.appendChild(heading);
 
     const desc = document.createElement("span");
     desc.setAttribute("slot", "description");
-    desc.textContent = proj.author;
+    desc.textContent = proj.author ?? "Unknown author";
     card.appendChild(desc);
 
     const footerStart = document.createElement("div");
@@ -119,7 +131,7 @@ function renderProjects(projects) {
     const tags = proj.tags ?? [];
 
     tags.slice(0, 3).forEach((tagLabel, tIdx) => {
-      const chipId = `chip-${idx}-${tIdx}`;
+      const chipId = `${idPrefix}-chip-${idx}-${tIdx}`;
       const chip = createChip(tagLabel);
       chip.setAttribute("id", chipId);
       footerStart.appendChild(chip);
@@ -151,20 +163,142 @@ function renderProjects(projects) {
       if (!e.target.closest("calcite-action")) openDialog(proj);
     });
 
-    grid.appendChild(card);
+    targetGrid.appendChild(card);
   });
 }
 
+function clearPreviewObjectUrls() {
+  previewObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  previewObjectUrls = [];
+}
+
+function getFilenameOnly(pathOrUrl) {
+  if (!pathOrUrl) return "";
+  const cleanValue = String(pathOrUrl).split("?")[0].split("#")[0];
+  return cleanValue.split("/").pop().trim().toLowerCase();
+}
+
+function makePreviewImageUrl(file, expectedFilename) {
+  if (!file || !expectedFilename) return "";
+
+  const uploadedName = getFilenameOnly(file.name);
+  const expectedName = getFilenameOnly(expectedFilename);
+
+  if (uploadedName !== expectedName) return "";
+
+  const url = URL.createObjectURL(file);
+  previewObjectUrls.push(url);
+  return url;
+}
+
+async function readProjectJson(file) {
+  if (!file) throw new Error("Choose a project JSON file first.");
+
+  const text = await file.text();
+  const parsed = JSON.parse(text);
+
+  // Accept either a single project object or an array with one project object.
+  const project = Array.isArray(parsed) ? parsed[0] : parsed;
+  if (!project || typeof project !== "object") {
+    throw new Error("The JSON file must contain a project object.");
+  }
+
+  return project;
+}
+
+async function previewUploadedProject() {
+  try {
+    clearPreviewObjectUrls();
+
+    const project = await readProjectJson(previewJsonInput.files[0]);
+    const thumbnailUrl = makePreviewImageUrl(
+      previewThumbnailInput.files[0],
+      project.thumbnail_image,
+    );
+    const popupUrl = makePreviewImageUrl(
+      previewPopupInput.files[0],
+      project.popup_image,
+    );
+
+    const previewProject = {
+      ...project,
+      thumbnail_image: thumbnailUrl || project.thumbnail_image,
+      popup_image: popupUrl || project.popup_image,
+    };
+
+    const statusNotes = [];
+    const expectedThumbnail = getFilenameOnly(project.thumbnail_image);
+    const expectedPopup = getFilenameOnly(project.popup_image);
+    const uploadedThumbnail = getFilenameOnly(previewThumbnailInput.files[0]?.name);
+    const uploadedPopup = getFilenameOnly(previewPopupInput.files[0]?.name);
+
+    if (expectedThumbnail && uploadedThumbnail && uploadedThumbnail !== expectedThumbnail) {
+      statusNotes.push(
+        `Thumbnail not loaded: uploaded "${uploadedThumbnail}" but JSON expects "${expectedThumbnail}".`,
+      );
+    }
+
+    if (expectedPopup && uploadedPopup && uploadedPopup !== expectedPopup) {
+      statusNotes.push(
+        `Popup image not loaded: uploaded "${uploadedPopup}" but JSON expects "${expectedPopup}".`,
+      );
+    }
+
+    if (expectedThumbnail && !uploadedThumbnail) {
+      statusNotes.push(`Thumbnail not loaded: JSON expects "${expectedThumbnail}".`);
+    }
+
+    if (expectedPopup && !uploadedPopup) {
+      statusNotes.push(`Popup image not loaded: JSON expects "${expectedPopup}".`);
+    }
+
+    activePreviewProject = previewProject;
+	
+    renderProjects([activePreviewProject, ...loadedProjects], {
+      targetGrid: grid,
+      shouldShuffle: false,
+      idPrefix: "project-with-preview",
+    });
+
+    previewStatus.textContent = [
+      "Preview loaded. It now appears below at the top of the Browse Projects grid.",
+      ...statusNotes,
+    ].join(" ");
+  } catch (err) {
+    console.error(err);
+    previewGrid.innerHTML = "";
+    previewStatus.textContent = `Preview error: ${err.message}`;
+  }
+}
+
+function clearPreview() {
+  clearPreviewObjectUrls();
+  previewGrid.innerHTML = "";
+  activePreviewProject = null;
+  renderProjects(loadedProjects, {
+    targetGrid: grid,
+    shouldShuffle: false,
+    idPrefix: "project",
+  });
+  previewStatus.textContent = "";
+  previewJsonInput.value = "";
+  previewThumbnailInput.value = "";
+  previewPopupInput.value = "";
+}
+
+previewProjectBtn.addEventListener("click", previewUploadedProject);
+clearPreviewBtn.addEventListener("click", clearPreview);
+
 // Dialog population and open function
 function openDialog(proj) {
-  dialog.setAttribute("heading", proj.title);
-  dialog.setAttribute("description", proj.author);
+  dialog.setAttribute("heading", proj.title ?? "Untitled project");
+  dialog.setAttribute("description", proj.author ?? "Unknown author");
 
   dialogBody.innerHTML = "";
 
   const img = document.createElement("img");
   img.src = assetPath(proj.popup_image);
-  img.alt = proj.title;
+  img.alt = proj.title ?? "Project popup image";
   dialogBody.appendChild(img);
 
   const descP = document.createElement("p");
@@ -216,7 +350,14 @@ closeBtn.addEventListener("click", () => {
 
 // Load projects
 loadProjects()
-  .then(renderProjects)
+  .then((projects) => {
+    loadedProjects = shuffle(projects);
+    renderProjects(loadedProjects, {
+      targetGrid: grid,
+      shouldShuffle: false,
+      idPrefix: "project",
+    });
+  })
   .catch((err) => {
     console.error(err);
     grid.innerHTML = "<p>Unable to load project data.</p>";

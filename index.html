@@ -99,6 +99,41 @@
         vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra
         inceptos himenaeos.
       </p>
+
+      <p class="section-heading">Preview Your Project</p>
+      <div class="project-preview-panel">
+        <p class="preview-help">
+          Upload one project JSON file, one thumbnail image, and one popup image to preview how your project card and dialog will look. This preview only runs in your browser and does not upload files anywhere.
+        </p>
+
+        <div class="preview-upload-grid">
+          <label class="preview-upload-field">
+            <span>Project JSON</span>
+            <input id="preview-json-input" type="file" accept=".json,application/json" />
+          </label>
+          <label class="preview-upload-field">
+            <span>Thumbnail image</span>
+            <input id="preview-thumbnail-input" type="file" accept="image/*" />
+          </label>
+          <label class="preview-upload-field">
+            <span>Popup image</span>
+            <input id="preview-popup-input" type="file" accept="image/*" />
+          </label>
+        </div>
+
+        <div class="preview-actions">
+          <calcite-button id="preview-project-btn" icon-start="view-visible">
+            Preview Project
+          </calcite-button>
+          <calcite-button id="clear-preview-btn" appearance="outline" icon-start="trash">
+            Clear Preview
+          </calcite-button>
+        </div>
+
+        <p id="preview-status" class="preview-status" aria-live="polite"></p>
+        <div class="card-grid preview-grid" id="preview-grid"></div>
+      </div>
+
       <p class="section-heading">Browse Projects</p>
       <div class="card-grid" id="card-grid"></div>
     </div>

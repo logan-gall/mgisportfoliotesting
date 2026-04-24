@@ -154,3 +154,63 @@ calcite-card img {
   --calcite-color-border-2: #7a0019;
   --calcite-color-border-3: #5b0013;
 }
+
+/* Project preview uploader */
+.project-preview-panel {
+  margin: 0 0 2rem;
+  padding: 1rem;
+  background: var(--calcite-color-surface-1);
+  border: 1px solid var(--calcite-color-border-2);
+  border-radius: 12px;
+}
+
+.preview-help {
+  margin: 0 0 1rem;
+  color: var(--calcite-color-text-2);
+  line-height: 1.5;
+}
+
+.preview-upload-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.preview-upload-field {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.preview-upload-field input {
+  font: inherit;
+  color: var(--calcite-color-text-1);
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.preview-status {
+  min-height: 1.25rem;
+  margin: 0 0 1rem;
+  color: var(--calcite-color-text-2);
+}
+
+.preview-grid {
+  max-width: 520px;
+}
+
+.preview-grid calcite-card {
+  min-width: min(100%, 420px);
+}
+
+@media (min-width: 800px) {
+  .preview-upload-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
