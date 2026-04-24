@@ -20,7 +20,7 @@ const TAG_MAP = {
   "coding-centric": "terminal",
 };
 
-const ASSET_DIR = "/assets/";
+const ASSET_DIR = "./assets/";
 const PROJECT_DIR = "./projects/";
 
 async function loadProjects() {
